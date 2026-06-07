@@ -14,6 +14,7 @@ import (
 func init() {
 	rootCmd.AddCommand(listCmd, viewCmd, boardCmd, itemsCmd, readyCmd, fieldsCmd, linksCmd)
 	itemsCmd.Flags().String("status", "", "only items in this Status column")
+	viewCmd.Flags().Bool("readme", false, "print the project's full README")
 }
 
 func newTab() *tabwriter.Writer {
@@ -79,7 +80,7 @@ var viewCmd = &cobra.Command{
 		if flagJSON {
 			return printJSON(map[string]any{
 				"number": p.Number, "title": p.Title, "description": p.Description,
-				"url": p.URL, "closed": p.Closed, "itemCount": len(items),
+				"readme": p.Readme, "url": p.URL, "closed": p.Closed, "itemCount": len(items),
 				"linkedRepos": repos, "fields": p.Fields,
 			})
 		}
@@ -102,6 +103,16 @@ var viewCmd = &cobra.Command{
 			fieldNames = append(fieldNames, f.Name)
 		}
 		fmt.Printf("Fields:       %s\n", strings.Join(fieldNames, ", "))
+
+		if p.Readme != "" {
+			showReadme, _ := cmd.Flags().GetBool("readme")
+			if showReadme {
+				fmt.Printf("\n── README ──\n%s\n", strings.TrimRight(p.Readme, "\n"))
+			} else {
+				lines := strings.Count(strings.TrimRight(p.Readme, "\n"), "\n") + 1
+				fmt.Printf("README:       %d line(s) (use --readme to show)\n", lines)
+			}
+		}
 		return nil
 	},
 }

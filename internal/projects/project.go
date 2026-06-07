@@ -49,6 +49,7 @@ type Project struct {
 	Number      int
 	Title       string
 	Description string
+	Readme      string
 	URL         string
 	Closed      bool
 	Owner       string
@@ -75,7 +76,7 @@ func (p *Project) StatusField() (Field, error) {
 
 // projectGraphQL is the shared selection set for a project and its fields.
 const projectGraphQL = `
-  id number title shortDescription url closed
+  id number title shortDescription readme url closed
   fields(first:50){
     nodes{
       __typename
@@ -92,6 +93,7 @@ type rawProject struct {
 	Number           int
 	Title            string
 	ShortDescription string
+	Readme           string
 	URL              string
 	Closed           bool
 	Fields           struct {
@@ -115,6 +117,7 @@ func (rp rawProject) toProject(owner string, c *Client) *Project {
 		Number:      rp.Number,
 		Title:       rp.Title,
 		Description: rp.ShortDescription,
+		Readme:      rp.Readme,
 		URL:         rp.URL,
 		Closed:      rp.Closed,
 		Owner:       owner,
