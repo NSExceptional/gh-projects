@@ -88,10 +88,40 @@ machine-readable output.
 ## Notes
 
 - A project is linked to **zero or more** repositories (it's many-to-many);
-  that link — not any single "default repo" — is what makes a project appear on
-  a repo's Projects tab. Manage it with `link` / `unlink` / `links`.
+  that link is what makes a project appear on a repo's Projects tab. Manage it
+  with `link` / `unlink` / `links`. (The web UI's "default repository" setting,
+  which only pre-selects a repo in dropdowns, is not exposed by GitHub's public
+  API, so it can't be read or changed here.)
 - `check`/`uncheck` require the matched task text to be **unique** within the
   body; they error rather than risk toggling the wrong box.
+- **Read-after-write lag:** GitHub's project *items* connection is eventually
+  consistent, so an item you just created may take a few seconds to show up in
+  `items`/`board`. The write commands themselves use the returned IDs directly
+  and are unaffected.
+
+## Development
+
+```sh
+go build -o gh-projects .     # build the binary
+go test ./...                 # fast unit tests (no network)
+```
+
+Live integration tests exercise the real API and are gated behind a build tag.
+They need gh authenticated with the `project` scope and operate on a disposable
+project, cleaning up everything they create:
+
+```sh
+# link/unlink, set all field types, add existing item, draft body toggle
+GHP_TEST_PROJECT=5 go test -tags integration -run Integration ./internal/projects -v
+
+# also the issue-creating paths (create/convert); point at a throwaway repo
+GHP_TEST_PROJECT=5 GHP_TEST_ISSUE_REPO=you/throwaway \
+  go test -tags integration -run Integration ./internal/projects -v
+```
+
+Configuration env vars: `GHP_TEST_OWNER` (default: authed user), `GHP_TEST_PROJECT`
+(default: 5), `GHP_TEST_REPO` (default: `NSExceptional/home`, only referenced not
+modified), `GHP_TEST_ISSUE_REPO` (required to run create/convert tests).
 
 ## License
 
