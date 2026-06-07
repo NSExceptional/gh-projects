@@ -1,0 +1,6 @@
+# Compiled extension binary (same name as the repo)
+/gh-projects
+/dist/
+
+# OS / editor
+.DS_Store
