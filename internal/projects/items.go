@@ -2,6 +2,7 @@ package projects
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -200,6 +201,59 @@ func (p *Project) ItemByNumber(number int) (Item, error) {
 		}
 	}
 	return Item{}, fmt.Errorf("no item for issue/PR #%d in project #%d", number, p.Number)
+}
+
+// resolveItemFrom finds an item by reference within a known item list. ref may
+// be an issue/PR number ("12" or "#12"), a PVTI_ item node id, or a unique
+// (case-insensitive) substring of an item's title — the last being how draft
+// issues, which have no number, are addressed.
+func resolveItemFrom(items []Item, ref string) (Item, error) {
+	if strings.HasPrefix(ref, "PVTI_") {
+		for _, it := range items {
+			if it.ID == ref {
+				return it, nil
+			}
+		}
+		return Item{}, fmt.Errorf("no item with id %q", ref)
+	}
+	if n, err := strconv.Atoi(strings.TrimPrefix(ref, "#")); err == nil {
+		for _, it := range items {
+			if it.Number == n {
+				return it, nil
+			}
+		}
+		return Item{}, fmt.Errorf("no item for issue/PR #%d", n)
+	}
+	var matches []Item
+	for _, it := range items {
+		if strings.Contains(strings.ToLower(it.Title), strings.ToLower(ref)) {
+			matches = append(matches, it)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return Item{}, fmt.Errorf("no item matching %q", ref)
+	default:
+		var titles []string
+		for _, m := range matches {
+			titles = append(titles, m.Title)
+		}
+		return Item{}, fmt.Errorf("%d items match %q; be more specific:\n  - %s",
+			len(matches), ref, strings.Join(titles, "\n  - "))
+	}
+}
+
+// ResolveItem fetches the project's items and resolves a reference to one of
+// them. ref may be an issue/PR number, a PVTI_ item id, or a unique title
+// substring (the way to target a draft).
+func (p *Project) ResolveItem(ref string) (Item, error) {
+	items, err := p.Items()
+	if err != nil {
+		return Item{}, err
+	}
+	return resolveItemFrom(items, ref)
 }
 
 // LinkedRepos returns the repositories the project is linked to.

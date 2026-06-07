@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/NSExceptional/gh-projects/internal/projects"
 	"github.com/spf13/cobra"
@@ -142,8 +141,9 @@ var addCmd = &cobra.Command{
 }
 
 var rmCmd = &cobra.Command{
-	Use:   "rm <project> <issue-number-or-item-id>",
+	Use:   "rm <project> <item>",
 	Short: "Remove an item from the project (does not delete the issue)",
+	Long:  "Remove an item from the project. <item> may be an issue number, a PVTI_ item id, or a unique draft title.",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, err := parseNumber(args[0])
@@ -154,21 +154,22 @@ var rmCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		itemID, desc, err := resolveItemID(p, args[1])
+		it, err := p.ResolveItem(args[1])
 		if err != nil {
 			return err
 		}
-		if err := p.RemoveItem(itemID); err != nil {
+		if err := p.RemoveItem(it.ID); err != nil {
 			return err
 		}
-		fmt.Printf("removed %s from project #%d\n", desc, p.Number)
+		fmt.Printf("removed %s from project #%d\n", itemDesc(it), p.Number)
 		return nil
 	},
 }
 
 var convertCmd = &cobra.Command{
-	Use:   "convert <project> <draft-title-or-item-id>",
+	Use:   "convert <project> <draft>",
 	Short: "Convert a draft issue into a real issue",
+	Long:  "Convert a draft issue into a real issue. <draft> may be a PVTI_ item id or a unique draft title.",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, err := parseNumber(args[0])
@@ -184,9 +185,12 @@ var convertCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		item, err := findDraft(p, args[1])
+		item, err := p.ResolveItem(args[1])
 		if err != nil {
 			return err
+		}
+		if !item.IsDraft() {
+			return fmt.Errorf("%s is not a draft", itemDesc(item))
 		}
 		if err := p.ConvertDraft(item.ID, repo.ID); err != nil {
 			return err
@@ -216,51 +220,12 @@ func defaultRepo(p *projects.Project, flag string) (string, error) {
 	}
 }
 
-// resolveItemID maps a user-supplied reference (issue number or item node id)
-// to an item id and a human description.
-func resolveItemID(p *projects.Project, ref string) (id, desc string, err error) {
-	if strings.HasPrefix(ref, "PVTI_") {
-		return ref, ref, nil
+// itemDesc renders a short human description of an item for status messages.
+func itemDesc(it projects.Item) string {
+	if it.IsDraft() {
+		return fmt.Sprintf("draft %q", it.Title)
 	}
-	n, err := parseNumber(ref)
-	if err != nil {
-		return "", "", fmt.Errorf("expected an issue number or PVTI_ item id, got %q", ref)
-	}
-	it, err := p.ItemByNumber(n)
-	if err != nil {
-		return "", "", err
-	}
-	return it.ID, fmt.Sprintf("#%d (%s)", it.Number, it.Title), nil
-}
-
-// findDraft locates a draft item by node id or unique title substring.
-func findDraft(p *projects.Project, ref string) (projects.Item, error) {
-	items, err := p.Items()
-	if err != nil {
-		return projects.Item{}, err
-	}
-	if strings.HasPrefix(ref, "PVTI_") {
-		for _, it := range items {
-			if it.ID == ref {
-				return it, nil
-			}
-		}
-		return projects.Item{}, fmt.Errorf("no item with id %q", ref)
-	}
-	var matches []projects.Item
-	for _, it := range items {
-		if it.IsDraft() && strings.Contains(strings.ToLower(it.Title), strings.ToLower(ref)) {
-			matches = append(matches, it)
-		}
-	}
-	switch len(matches) {
-	case 1:
-		return matches[0], nil
-	case 0:
-		return projects.Item{}, fmt.Errorf("no draft matching %q", ref)
-	default:
-		return projects.Item{}, fmt.Errorf("%d drafts match %q; be more specific", len(matches), ref)
-	}
+	return fmt.Sprintf("#%d (%s)", it.Number, it.Title)
 }
 
 // setStatus sets an item's Status field to the named column.

@@ -12,15 +12,12 @@ func init() {
 }
 
 var moveCmd = &cobra.Command{
-	Use:   "move <project> <issue-number> <column>",
+	Use:   "move <project> <item> <column>",
 	Short: "Move an item to a Status column",
+	Long:  "Move an item to a Status column. <item> may be an issue number, a PVTI_ item id, or a unique draft title.",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, err := parseNumber(args[0])
-		if err != nil {
-			return err
-		}
-		issueNum, err := parseNumber(args[1])
 		if err != nil {
 			return err
 		}
@@ -28,28 +25,25 @@ var moveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		it, err := p.ItemByNumber(issueNum)
+		it, err := p.ResolveItem(args[1])
 		if err != nil {
 			return err
 		}
 		if err := setStatus(p, it.ID, args[2]); err != nil {
 			return err
 		}
-		fmt.Printf("moved #%d to %q\n", issueNum, args[2])
+		fmt.Printf("moved %s to %q\n", itemDesc(it), args[2])
 		return nil
 	},
 }
 
 var setCmd = &cobra.Command{
-	Use:   "set <project> <issue-number> <field> <value>",
+	Use:   "set <project> <item> <field> <value>",
 	Short: "Set a field value on an item",
+	Long:  "Set a field value on an item. <item> may be an issue number, a PVTI_ item id, or a unique draft title.",
 	Args:  cobra.ExactArgs(4),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, err := parseNumber(args[0])
-		if err != nil {
-			return err
-		}
-		issueNum, err := parseNumber(args[1])
 		if err != nil {
 			return err
 		}
@@ -61,28 +55,30 @@ var setCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		it, err := p.ItemByNumber(issueNum)
+		it, err := p.ResolveItem(args[1])
 		if err != nil {
 			return err
 		}
 		if err := p.SetFieldValue(it.ID, field, args[3]); err != nil {
 			return err
 		}
-		fmt.Printf("set %s = %q on #%d\n", field.Name, args[3], issueNum)
+		fmt.Printf("set %s = %q on %s\n", field.Name, args[3], itemDesc(it))
 		return nil
 	},
 }
 
 var checkCmd = &cobra.Command{
-	Use:   "check <project> <issue-number> <task-text>",
+	Use:   "check <project> <item> <task-text>",
 	Short: "Check a task-list box in an item's body",
+	Long:  "Check a task-list box in an item's body. <item> may be an issue number, a PVTI_ item id, or a unique draft title.",
 	Args:  cobra.ExactArgs(3),
 	RunE:  func(cmd *cobra.Command, args []string) error { return toggle(args, true) },
 }
 
 var uncheckCmd = &cobra.Command{
-	Use:   "uncheck <project> <issue-number> <task-text>",
+	Use:   "uncheck <project> <item> <task-text>",
 	Short: "Uncheck a task-list box in an item's body",
+	Long:  "Uncheck a task-list box in an item's body. <item> may be an issue number, a PVTI_ item id, or a unique draft title.",
 	Args:  cobra.ExactArgs(3),
 	RunE:  func(cmd *cobra.Command, args []string) error { return toggle(args, false) },
 }
@@ -92,15 +88,11 @@ func toggle(args []string, checked bool) error {
 	if err != nil {
 		return err
 	}
-	issueNum, err := parseNumber(args[1])
-	if err != nil {
-		return err
-	}
 	c, p, err := openProject(n)
 	if err != nil {
 		return err
 	}
-	it, err := p.ItemByNumber(issueNum)
+	it, err := p.ResolveItem(args[1])
 	if err != nil {
 		return err
 	}

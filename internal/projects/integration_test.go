@@ -214,6 +214,30 @@ func TestIntegration_DraftBodyToggle(t *testing.T) {
 	})
 }
 
+func TestIntegration_ResolveDraftByTitle(t *testing.T) {
+	c, p := testProject(t)
+
+	const title = "itest resolve by title"
+	itemID, err := p.AddDraft(title, "body")
+	if err != nil {
+		t.Fatalf("add draft: %v", err)
+	}
+	t.Cleanup(func() { _ = p.RemoveItem(itemID) })
+
+	retry(t, "draft resolvable by title substring", 60*time.Second, func() (bool, error) {
+		it, err := p.ResolveItem("resolve by title")
+		if err != nil {
+			return false, nil // not indexed yet
+		}
+		return it.ID == itemID && it.IsDraft(), nil
+	})
+
+	// node-by-id read is immediate, so this also confirms resolution by id.
+	if it, err := fetchItem(c, itemID); err != nil || it.ID != itemID {
+		t.Fatalf("fetch by id: it=%+v err=%v", it, err)
+	}
+}
+
 // TestIntegration_CreateAndConvert creates real issues, so it runs only when
 // GHP_TEST_ISSUE_REPO points at a throwaway repo. It deletes what it creates.
 func TestIntegration_CreateAndConvert(t *testing.T) {

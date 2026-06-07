@@ -75,6 +75,34 @@ func TestValVarType(t *testing.T) {
 	}
 }
 
+func TestResolveItemFrom(t *testing.T) {
+	items := []Item{
+		{ID: "PVTI_a", Type: "ISSUE", Number: 12, Title: "Fix login bug"},
+		{ID: "PVTI_b", Type: "DRAFT_ISSUE", Title: "Set up CI pipeline"},
+		{ID: "PVTI_c", Type: "DRAFT_ISSUE", Title: "Set up monitoring"},
+	}
+	ok := []struct{ ref, wantID string }{
+		{"12", "PVTI_a"},        // number
+		{"#12", "PVTI_a"},       // number with #
+		{"PVTI_b", "PVTI_b"},    // node id
+		{"login", "PVTI_a"},     // unique title substring (an issue)
+		{"set up ci", "PVTI_b"}, // unique title substring (a draft), case-insensitive
+	}
+	for _, c := range ok {
+		got, err := resolveItemFrom(items, c.ref)
+		if err != nil {
+			t.Errorf("resolveItemFrom(%q) error: %v", c.ref, err)
+		} else if got.ID != c.wantID {
+			t.Errorf("resolveItemFrom(%q) = %s, want %s", c.ref, got.ID, c.wantID)
+		}
+	}
+	for _, ref := range []string{"Set up" /*ambiguous*/, "nope" /*none*/, "#99" /*missing num*/, "PVTI_zzz" /*missing id*/} {
+		if _, err := resolveItemFrom(items, ref); err == nil {
+			t.Errorf("resolveItemFrom(%q) expected error", ref)
+		}
+	}
+}
+
 func TestIssueURLRegex(t *testing.T) {
 	cases := []struct {
 		in          string

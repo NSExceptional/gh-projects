@@ -64,17 +64,21 @@ machine-readable output.
 | `create <project> --title T [--repo O/R] [--body B] [--label L]… [--status S]` | Create a **real issue** and add it to the board (default way to make a task). `--repo` defaults to the project's sole linked repo. |
 | `draft <project> --title T [--body B] [--status S]` | Add a draft issue (project-only) |
 | `add <project> <issue-url-or-#> [--repo O/R]` | Add an existing issue/PR |
-| `rm <project> <issue-#-or-item-id>` | Remove an item from the project (does not delete the issue) |
-| `convert <project> <draft-title-or-item-id> --repo O/R` | Convert a draft into a real issue |
+| `rm <project> <item>` | Remove an item from the project (does not delete the issue) |
+| `convert <project> <draft> --repo O/R` | Convert a draft into a real issue |
 
 ### Field values & movement
 
 | Command | Description |
 | --- | --- |
-| `move <project> <issue-#> <column>` | Set the `Status` field (move between columns) |
-| `set <project> <issue-#> <field> <value>` | Set any field value (single-select by option name, plus text/number/date/iteration) |
-| `check <project> <issue-#> <task-text>` | Tick the task-list box whose text uniquely matches |
-| `uncheck <project> <issue-#> <task-text>` | Untick it |
+| `move <project> <item> <column>` | Set the `Status` field (move between columns) |
+| `set <project> <item> <field> <value>` | Set any field value (single-select by option name, plus text/number/date/iteration) |
+| `check <project> <item> <task-text>` | Tick the task-list box whose text uniquely matches |
+| `uncheck <project> <item> <task-text>` | Untick it |
+
+> **Addressing items:** anywhere an `<item>` is expected, you can pass an issue/PR
+> **number** (`12`), a **`PVTI_…` item id**, or a **unique substring of the item's
+> title**. The title form is how you target **draft issues**, which have no number.
 
 ### Field definitions & repo links
 
